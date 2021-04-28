@@ -1,0 +1,43 @@
+{
+  "//1": "describes your app and its dependencies",
+  "//2": "https://docs.npmjs.com/files/package.json",
+  "//3": "updating this file will download and update your packages",
+  "name": "hello-express",
+  "version": "0.0.1",
+  "description": "A simple Node app built on Express, instantly up and running.",
+  "main": "exzoncrp.js",
+  "scripts": {
+    "start": "node exzoncrp.js"
+  },
+  "dependencies": {
+    "@codedipper/random-code": "^2.1.2",
+    "canvacord": "^5.0.8",
+    "common-tags": "^1.8.0",
+    "cron": "^1.8.2",
+    "discord-logs": "^1.9.0",
+    "discord-xp": "^1.1.10",
+    "discord.js": "^12.2.0",
+    "express": "^4.17.1",
+    "moment": "^2.27.0",
+    "moment-duration": "^0.0.6",
+    "moment-duration-format": "^2.3.2",
+    "moment-timezone": "^0.5.32",
+    "mongoose": "^5.11.9",
+    "ms": "^2.1.2",
+    "node-superfetch": "^0.2.2",
+    "parse-ms": "^2.1.0",
+    "quick.db": "^7.1.1"
+  },
+  "engines": {
+    "node": "12.x"
+  },
+  "repository": {
+    "url": "https://glitch.com/edit/#!/hello-express"
+  },
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "glitch",
+    "express"
+  ]
+}
