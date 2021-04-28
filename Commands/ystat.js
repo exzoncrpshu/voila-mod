@@ -1,0 +1,127 @@
+﻿const { MessageEmbed } = require('discord.js');
+const MemberStats = require('../Models/MemberStats.js');
+const Database = require('../models/inviter.js');
+const sunucuAyar = global.sunucuAyar = require("../exzsettings/sunucuAyar.js");
+const coin = require("../Models/coin.js");
+const taggeds = require("../Models/taggeds.js");
+const conf = require("../exzsettings/config.json");
+const qdb = require("quick.db")
+const kdb = new qdb.table("kullanici");
+const teyitci = require("../models/teyitci.js");
+const yetkili = require("../models/yetkili.js");
+module.exports.execute = async(client, message, args,ayar,emoji) => {
+    var sayi = 1
+    var sayii = 1
+    if(!ayar.teyitciRolleri) return message.channel.csend("**Roller ayarlanmamış!**").then(x => x.delete({timeout: 5000}));
+    if(!ayar.teyitciRolleri.some(rol => message.member.roles.cache.has(rol)) && !message.member.roles.cache.has(ayar.sahipRolu)) return message.react('🚫');
+
+   // if(!message.member.roles.cache.array().some(rol => message.guild.roles.cache.get(ayar.staffrole).rawPosition <= rol.rawPosition)) return  message.reply("`Bu komut yetkililere özeldir.`");
+    let kullanici = message.mentions.users.first() || client.users.cache.get(args[0]) || (args.length > 0 ? client.users.cache.filter(e => e.username.toLowerCase().includes(args.join(' ').toLowerCase())).first(): message.author) || message.author;
+    let uye = message.guild.member(kullanici);
+    if(!ayar.teyitciRolleri.some(rol => uye.roles.cache.has(rol)) && !uye.roles.cache.has(ayar.sahipRolu)) return message.react('🚫');
+    const hata = new MessageEmbed().setColor(client.randomColor()).setAuthor(kullanici.tag.replace('`', '')+` (` + kullanici.id + `)` , kullanici.avatarURL({dynamic: true, size: 2048}));
+    const embed = new MessageEmbed().setColor(client.randomColor()).setAuthor(kullanici.tag.replace('`', '')+` (` + kullanici.id + `)` , kullanici.avatarURL({dynamic: true, size: 2048})).setThumbnail(kullanici.avatarURL({dynamic: true, size: 2048}));
+  
+    const coinData = await coin.findOne({ guildID: message.guild.id, userID: uye.id });
+    const maxValue = client.ranks[client.ranks.indexOf(client.ranks.find(x => x.coin >= (coinData ? coinData.coin : 0)))] || client.ranks[client.ranks.length-1];
+
+    const coinStatus = ayar.teyitciRolleri.some(x => uye.roles.cache.has(x)) ? `**Yetki Durumu**\n${client.emoji("st")} **Puan:** ${coinData.toLocaleString() ? coinData.coin.toLocaleString() : 0} **Gereken:** ${maxValue.coin.toLocaleString()} \n${progressBar(coinData ? coinData.coin : 0, maxValue.coin, 8)} ${coinData.toLocaleString() ? coinData.coin.toLocaleString() : 0} / ${maxValue.coin.toLocaleString()}\n\n**Yetki Atlama Durumu**\n${client.ranks[client.ranks.indexOf(maxValue)-1] ? `${maxValue !== client.ranks[client.ranks.length-1] ? `Şu an <@&${client.ranks[client.ranks.indexOf(maxValue)-1].role}> rolündesiniz. <@&${maxValue.role}> rolüne ulaşmak için **${(maxValue.coin-coinData.coin).toLocaleString()} XP** daha kazanmanız gerekiyor!` : "Şu an son yetkidesiniz! Emekleriniz için teşekkür ederiz."}` : `<@&${maxValue.role}> rolüne ulaşmak için **${(maxValue.coin - (coinData ? coinData.coin : 0)).toLocaleString()} XP** daha kazanmanız gerekiyor!`}` : "";
+
+let topPuan = coinData.coin.toLocaleString()
+    let yetkiliBilgisi = ``;
+    if((ayar.sahipRolu && uye.roles.cache.has(ayar.sahipRolu)) || (ayar.teyitciRolleri && ayar.teyitciRolleri.some(rol => uye.roles.cache.has(rol)))) {
+      let memberData = await teyitci.findById(uye.id);
+      if(memberData){
+       let teyitToplam = memberData.teyitler || 0;
+       let erkekTeyit = memberData.erkek || 0;
+       let kizTeyit = memberData.kiz || 0;
+        yetkiliBilgisi += `${client.emoji("st")} **Teyitleri:** ${teyitToplam} (**${erkekTeyit}** erkek, **${kizTeyit}** kiz)\n`;
+      }
+
+    }
+    let ekPuanBilgisi = ``;
+    if((ayar.sahipRolu && uye.roles.cache.has(ayar.sahipRolu)) || (ayar.muteciRolleri && ayar.muteciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.banciRolleri && ayar.banciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.banciRolleri && ayar.banciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.jailciRolleri && ayar.jailciRolleri.some(rol => uye.roles.cache.has(rol)))) {
+      let staffsData = await yetkili.findById(uye.id);
+      if(staffsData) { 
+      let chatMute = staffsData.chatmute || 0;
+      let sesMute = staffsData.sesmute || 0;
+      let kick = staffsData.kick || 0;
+      let ban = staffsData.ban || 0;
+      let jail = staffsData.jail || 0;
+      let toplam = staffsData.topceza || 0;
+      yetkiliBilgisi += `${client.emoji("st")} **Cezalandırmaları:** ${toplam} (**${chatMute}** chat | **${sesMute}** ses mute, **${jail}** jail, **${kick}** kick, **${ban}** ban) `;
+    };
+    let cezaData = await yetkili.findById(uye.id);
+    if(cezaData) {
+ let topCeza = cezaData.topceza || 0;
+ekPuanBilgisi += `${client.emoji("st")} **Cezalandırma:** ${topCeza} \`(${topCeza*10} Puan)\`\n`
+    }
+    };
+    if((ayar.sahipRolu && uye.roles.cache.has(ayar.sahipRolu)) || (ayar.muteciRolleri && ayar.muteciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.banciRolleri && ayar.banciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.banciRolleri && ayar.banciRolleri.some(rol => uye.roles.cache.has(rol))) || (ayar.jailciRolleri && ayar.jailciRolleri.some(rol => uye.roles.cache.has(rol)))) {
+    const taggedData = await taggeds.findOne({ guildID: message.guild.id, userID: uye.id });
+    if(taggedData) {
+
+      ekPuanBilgisi += `${client.emoji("st")} **Taglı Üye:** ${taggedData.taggeds.length ? taggedData.taggeds.length :"0"} \`(${taggedData.taggeds.length ? `${taggedData.taggeds.length*10} Puan` :"0"})\`\n`
+    }
+    };
+
+    let teyitPuan = await teyitci.findById(uye.id);
+    if(teyitPuan) { 
+    let tSayi = teyitPuan.teyitler || 0;
+    ekPuanBilgisi += `${client.emoji("st")} **Kayıt:** ${tSayi} \`(${tSayi*6} Puan)\`\n`
+    }
+    MemberStats.findOne({ guildID: message.guild.id, userID: uye.id }, (err, data) => {
+        if (!data) return global.send(message.channel, embed.setDescription('Belirtilen üyeye ait herhangi bir veri bulunamadı!'));
+        let haftalikSesToplam = 0;
+        data.voiceStats.forEach(c => haftalikSesToplam += c);
+        let haftalikSesListe = '';
+        data.voiceStats.forEach((value, key) => haftalikSesListe += `\`${sayii++}.\` ${message.guild.channels.cache.has(key) ? message.guild.channels.cache.get(key) : '#deleted-channel'}: \`${client.convertDuration(value)}\`  \`(${(value/1000/60/5).toLocaleString()} Puan)\`\n`);
+        let haftalikChatToplam = 0;
+        data.chatStats.forEach(c => haftalikChatToplam += c);
+        let haftalikChatListe = '';
+        data.chatStats.forEach((value, key) => haftalikChatListe += `\`${sayi++}.\` ${message.guild.channels.cache.has(key) ? message.guild.channels.cache.get(key) : '#deleted-channel'}: \`${value.toLocaleString()} mesaj\`  \`(${(value/10).toLocaleString()} Puan)\`\n`);
+  
+        Database.findOne({guildID: message.guild.id, userID: uye.id}, (err, inviterData) => {
+            if (!inviterData) {
+                hata.setDescription(`Bu üyenin Stats bilgisi için en az **1 davete** sahip olması gerekiyor!`);
+                message.channel.send(hata);
+              } else {
+              Database.find({guildID: message.guild.id, inviterID: uye.id}).sort().exec((err, inviterMembers) => {
+                let dailyInvites = 0;
+                let weeklyInvites = 0;
+                if (inviterMembers.length) {
+                 // dailyInvites = inviterMembers.filter(x => message.guild.members.cache.has(x.userID) && (Date.now() - message.guild.members.cache.get(x.userID).joinedTimestamp) < 1000*60*60*24).length;
+                  weeklyInvites = inviterMembers.filter(x => message.guild.members.cache.has(x.userID) && (Date.now() - message.guild.members.cache.get(x.userID).joinedTimestamp) < 1000*60*60*24*7).length;
+                }
+   ekPuanBilgisi += `${client.emoji("st")} **Davet:** ${inviterData.regular+inviterData.bonus} \`(${(inviterData.regular+inviterData.bonus)*10} Puan)\`\n`            
+ let Puanlar = `${client.emoji("st")} **Haftalık Ses:** ${client.convertDuration(haftalikSesToplam)} \`(${(haftalikSesToplam/1000/60/5).toLocaleString()} Puan)\`\n${client.emoji("st")} **Haftalık Mesaj:** ${haftalikChatToplam.toLocaleString() || 0} mesaj \`(${(haftalikChatToplam/10).toLocaleString()} Puan)\`\n`
+
+        embed.setDescription(`${kullanici} üyesinin **ses, chat ve davet** istatistikleri;\n\n${client.emoji("st")} **Genel Toplam Ses:** ${client.convertDuration(data.totalVoiceStats || 0)}\n${client.emoji("st")} **Genel Toplam Chat:** ${data.totalChatStats.toLocaleString() || 0} mesaj\n\n${client.emoji("st")} **Haftalık Ses:** ${client.convertDuration(haftalikSesToplam)}\n${client.emoji("st")} **Haftalık Chat:** ${haftalikChatToplam.toLocaleString() || 0} mesaj\n${client.emoji("st")} **Davetleri:** ${inviterData.regular+inviterData.bonus} (**${inviterData.regular}** gerçek, **${inviterData.bonus}** bonus, **${inviterData.fake}** fake, **${weeklyInvites}** haftalık)\n${yetkiliBilgisi}\n\n**Ek Puanlar**\n${Puanlar}${ekPuanBilgisi}\n${coinStatus}`);
+    message.channel.send(embed).catch(e => message.inlineReply(hata.setDescription(`Kanal listeniz embed'e (kutucuğa) sığmadığı için gönderemiyoruz! \`!totalstat\` komutunu kullan!`)))
+
+    
+ 
+            });
+          }
+    
+        });
+      });
+
+};
+module.exports.configuration = {
+    name: 'ystat',
+    aliases: ['ystats', 'yinfo', 'yinfo'],
+    usage: 'ystat [üye]',
+    description: 'Belirtilen üyenin tüm ses ve chat yetkili bilgilerini gösterir.',
+    permLevel: 0
+};
+
+function progressBar(value, maxValue, size) {
+  const progress = Math.round(size * ((value / maxValue) > 1 ? 1 : (value / maxValue)));
+  const emptyProgress = size - progress > 0 ? size - progress : 0;
+  
+  const progressText = `${client.emoji("dolubar")}`.repeat(progress);
+  const emptyProgressText = `${client.emoji("bosbar")}`.repeat(emptyProgress);
+  
+  return emptyProgress > 0 ? `${client.emoji("dolubas")}${progressText}${emptyProgressText}${client.emoji("bosson")}` : `${client.emoji("dolubas")}${progressText}${emptyProgressText}${client.emoji("doluson")}`;
+  };
